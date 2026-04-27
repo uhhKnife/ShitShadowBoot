@@ -205,6 +205,7 @@ ZeroTopOfSecureSRAMLoop:
 	# Update HRMOR
 	li		%r3,0x200
 	rldicr		%r3,%r3,0x20,0x1f
+	isync
 	mtspr		HRMOR,%r3
 
 	# Clear SLB
@@ -224,29 +225,17 @@ ZeroTopOfSecureSRAMLoop:
 	lwz		%r25,0x8(%r16)
 	addi		%r25,%r25,0x1000
 
-	# Zero physical memory
+	# Zero and flush physical memory in one pass
 	lis		%r3,-0x8000
 	rldicr		%r3,%r3,0x20,0x1f
 	oris		%r3,%r3,0x40
 	li		%r4,0x2000
 	mtspr		%CTR,%r4
-ZeroPhysicalLoop:
+ZeroFlushPhysicalLoop:
 	dcbz		0,%r3
-	addi		%r3,%r3,0x80
-	bdnz		ZeroPhysicalLoop
-	sync		0x0
-	isync
-
-	# Flush physical memory
-	lis		%r3,-0x8000
-	rldicr		%r3,%r3,0x20,0x1f
-	oris		%r3,%r3,0x40
-	li		%r4,0x2000
-	mtspr		%CTR,%r4
-FlushPhysicalLoop:
 	dcbf		0,%r3
 	addi		%r3,%r3,0x80
-	bdnz		FlushPhysicalLoop
+	bdnz		ZeroFlushPhysicalLoop
 	sync		0x0
 	isync
 
