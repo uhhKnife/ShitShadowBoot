@@ -47,16 +47,16 @@ static __declspec(naked) VOID HvxQuiesceProcessor(ULONG Reason)
 struct MY_SHADOW_BOOT_PARAM
 {
 	KDPC DpcArray[NUM_PROCESSORS];
-	volatile LONG StartedCount;
-	volatile LONG RunningCount;
-	volatile LONG FinishedCount;
+	LONG StartedCount;
+	LONG RunningCount;
+	LONG FinishedCount;
 };
 
 static VOID MyShadowBootIpi(PVOID a1)
 {
 	KiIpiSignalPacketDone(a1);
-
-	__lwsync();
+	
+	//HvxQuiesceProcessor(2);
 
 	HvxFreebootExecute(
 		EXEC_FROM_REAL_QUIESCE,
@@ -88,11 +88,8 @@ static VOID MyShadowBootDpc(KDPC *Dpc, MY_SHADOW_BOOT_PARAM *Param)
 
 		InterlockedIncrement(&Param->RunningCount);
 
-		// Spin until all non-0 threads have entered quiesce via IPI.
-		// Loop is volatile so the compiler cannot optimize it away.
-		{ volatile LONG spin = 0; for (int i = 0; i < 10000000; i++) spin = i; }
-
-		__lwsync();
+		for (int i = 0; i < 10000000; i++)
+			__asm nop
 
 		// Execute shadowboot on thread 0
 		HvxFreebootExecute(
